@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETH Balance Checker (Weeks 9-10 Complete)</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f0f0f0; }
+    button { padding: 12px 24px; font-size: 18px; margin: 10px; cursor: pointer; }
+    p { font-size: 20px; margin: 15px; }
+    .loading { color: gray; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Ethereum Balance Checker</h1>
+  <button id="connectBtn">Connect MetaMask</button>
+  <button id="refreshBtn" disabled>Refresh Balance</button>
+
+  <p id="network"></p>
+  <p id="account"></p>
+  <p id="balance" class="loading">Not connected yet</p>
+
+  <script type="module">
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6/+esm";
+
+    const connectBtn = document.getElementById("connectBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const networkPara = document.getElementById("network");
+    const accountPara = document.getElementById("account");
+    const balancePara = document.getElementById("balance");
+
+    let provider;
+    let userAddress;
+
+    // Main function to fetch and display balance
+    async function updateBalance() {
+      if (!provider || !userAddress) return;
+
+      balancePara.textContent = "Loading...";
+      balancePara.className = "loading";
+
+      try {
+        const balanceBigInt = await provider.getBalance(userAddress);
+        const balanceEth = ethers.formatEther(balanceBigInt);
+        // Round to 4 decimals for cleaner display
+        const formatted = parseFloat(balanceEth).toFixed(4);
+
+        balancePara.textContent = `Balance: ${formatted} ETH`;
+        balancePara.className = "";
+      } catch (error) {
+        balancePara.textContent = "Error loading balance";
+        console.error(error);
+      }
+    }
+
+    connectBtn.onclick = async () => {
+      if (typeof window.ethereum !== "undefined") {
+        try {
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+
+          provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          userAddress = await signer.getAddress();
+
+          // Get network info
+          const network = await provider.getNetwork();
+          const chainId = Number(network.chainId);
+          const networkName = network.name.charAt(0).toUpperCase() + network.name.slice(1);
+
+          // Display everything
+          accountPara.textContent = `Account: ${userAddress}`;
+          networkPara.textContent = `Network: ${networkName} (Chain ID: ${chainId})`;
+
+          // Enable refresh button
+          refreshBtn.disabled = false;
+
+          // Initial balance load
+          await updateBalance();
+
+          connectBtn.textContent = "Reconnect Wallet";
+        } catch (error) {
+          alert("Error: " + error.message);
+        }
+      } else {
+        alert("MetaMask not detected! Install from https://metamask.io");
+      }
+    };
+
+    // Refresh button just reloads the balance
+    refreshBtn.onclick = updateBalance;
+  </script>
+</body>
+</html>
